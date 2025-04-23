@@ -1,21 +1,17 @@
+
+import React from 'react';
 import { Link } from 'react-router-dom';
-import './Item.css';
 
-function Item({ id, nombre, precio }) {
-
-    function agregarAlCarrito() {
-        console.log("Vas a agregar:", nombre);
-    };
-
+const Item = ({ producto }) => {
     return (
-        <div className="card">
-            <h2>{nombre || "NO DISPONIBLE"}</h2>
-            <h3>Precio: ${precio || "SIN PRECIO"}</h3>
-            <button disabled={!nombre} className="card-btn" onClick={() => agregarAlCarrito()}>Agregar al carrito</button>
-            <Link to={`/detalle/${id}`}>
-                <button disabled={!nombre} className="card-btn">
-                    Ver detalle
-                </button>
+        <div className="item-card">
+            <img src={producto.imagenUrl} alt={producto.nombre} />
+            <h3>{producto.nombre}</h3>
+            <p>{producto.descripcion}</p>
+            <p>Precio: ${producto.precio}</p>
+            <p>Stock: {producto.stock}</p>
+            <Link to={`/detalle/${producto.id}`}>
+                <button>Ver detalle</button>
             </Link>
         </div>
     );

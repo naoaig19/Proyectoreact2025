@@ -1,56 +1,44 @@
-import { useEffect, useState } from 'react';
-import { fetchData } from '../../fetchData';
-import Item from '../Item/Item';
-import Loader from '../Loader/Loader';
-import './ItemListContainer.css';
-import { useParams } from 'react-router-dom';
 
-function ItemListContainer() {
 
-    const [todosLosProductos, setTodosLosProductos] = useState([]); // Este estado solo me va a servir como una especie de base de datos local en mi proyecto para no tener que seguir solicitando infinitas veces de acuerdo a los filtros que aplique. Si aplico el filtro de no mostrar productos, eventualmente puedo perder esa información. Así que acá tenemos un backup
-    const [misProductos, setMisProductos] = useState([]); // Los productos que vamos a mostrar
+import React, { useEffect, useState } from 'react';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../../firebaseConfig'; // Asegúrate de importar tu configuración de Firebase
+import Item from '../Item/Item'; // Importa tu componente Item
+
+const ItemListContainer = () => {
+    const [productos, setProductos] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    const { categoria } = useParams();
-
     useEffect(() => {
-        if (todosLosProductos.length === 0) {
-            fetchData().then(response => {
-                setTodosLosProductos(response);
-                if (categoria) {
-                    const productosFiltrados = response.filter(el => el.categoria === categoria);
-                    setMisProductos(productosFiltrados);
-                    setLoading(false);
-                } else {
-                    setMisProductos(response);
-                    setLoading(false);
-                };
-            })
-                .catch(err => console.error(err));
-        } else {
-            if (categoria) {
-                const productosFiltrados = todosLosProductos.filter(el => el.categoria === categoria);
-                setMisProductos(productosFiltrados);
-            } else {
-                setMisProductos(todosLosProductos);
-            };
-        }
-
-    }, [categoria]);
+        const obtenerProductos = async () => {
+            try {
+                const querySnapshot = await getDocs(collection(db, "productos"));
+                const productosList = querySnapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                setProductos(productosList);
+                setLoading(false);
+            } catch (e) {
+                console.error("Error al obtener productos: ", e);
+                setLoading(false);
+            }
+        };
+        obtenerProductos();
+    }, []);
 
     return (
-        <>
-            <div className="container-cards">
-                {
-                    loading ? <Loader /> :
-                        misProductos.map((el, index) => {
-                            return (
-                                <Item key={index} id={el.id} nombre={el.nombre} precio={el.precio} />
-                            );
-                        })
-                }
-            </div>
-        </>
+        <div>
+            {loading ? (
+                <p>Cargando productos...</p>
+            ) : (
+                <div className="item-list">
+                    {productos.map(producto => (
+                        <Item key={producto.id} producto={producto} />
+                    ))}
+                </div>
+            )}
+        </div>
     );
 };
 

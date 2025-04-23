@@ -1,57 +1,64 @@
-import { Link, useParams } from 'react-router-dom';
-import './ItemDetail.css';
-import { useEffect, useState } from 'react';
-import { fetchData } from '../../fetchData';
-import Loader from '../Loader/Loader';
-import { useAppContext } from '../../context/context';
-import Contador from '../Contador/Contador';
+import React, { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../firebaseConfig';
+import { useCartContext } from '../../context/CartContext';
 
-function ItemDetail() {
-
+const ItemDetail = () => {
+    const [producto, setProducto] = useState(null);
+    const [loading, setLoading] = useState(true);
     const { id } = useParams();
-
-    const [detalle, setDetalle] = useState(null);
-    const [loader, setLoader] = useState(true);
-
-    const { agregarAlCarrito, contador } = useAppContext();
+    const { agregarAlCarrito } = useCartContext();
 
     useEffect(() => {
-        fetchData().then(response => {
-            const detalleDelProducto = response.find(el => el.id === parseInt(id));
-            setDetalle(detalleDelProducto);
-            setLoader(false);
-        })
-            .catch(err => console.error(err));
+        const obtenerProducto = async () => {
+            try {
+                const docRef = doc(db, "productos", id);
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists()) {
+                    setProducto({ id: docSnap.id, ...docSnap.data() });
+                } else {
+                    console.log("No se encontró el producto");
+                }
+                setLoading(false);
+            } catch (e) {
+                console.error("Error al obtener producto: ", e);
+                setLoading(false);
+            }
+        };
+        obtenerProducto();
     }, [id]);
 
+    const handleAgregarAlCarrito = () => {
+        if (producto) {
+            agregarAlCarrito({
+                id: producto.id,
+                nombre: producto.nombre,
+                precio: producto.precio,
+                cantidad: 1 // Aquí puedes implementar un contador de unidades si lo necesitas
+            });
+        }
+    };
+
     return (
-        loader ? <Loader />
-            :
-            detalle ?
-                <div className="card-detail">
-                    <h2>{detalle.nombre || "NO DISPONIBLE"}</h2>
-                    <h3>Precio: ${detalle.precio || "SIN PRECIO"}</h3>
-                    <p>Descripción: {detalle.descripcion}</p>
-                    {
-                        detalle.oferta && <p><b>PRODUCTO EN OFERTA</b></p>
-                    }
-                    {
-                        detalle.stock > 0 ?
-                            <>
-                                <p>Quedan {detalle.stock} unidades</p>
-                                <Contador stock={detalle.stock} />
-                            </>
-                            :
-                            <p>Producto agotado!</p>
-                    }
-                    <button disabled={detalle.stock === 0} className="card-detail-btn" onClick={() => agregarAlCarrito({ id: detalle.id, nombre: detalle.nombre, precio: detalle.precio, cantidad: contador })}>Agregar al carrito</button>
-                    <Link to="/">
-                        <button className="card-detail-btn">Volver al inicio</button>
-                    </Link>
+        <div>
+            {loading ? (
+                <p>Cargando detalles...</p>
+            ) : producto ? (
+                <div className="item-detail">
+                    <h2>{producto.nombre}</h2>
+                    <p>{producto.descripcion}</p>
+                    <p>Precio: ${producto.precio}</p>
+                    <p>Stock: {producto.stock}</p>
+                    <button onClick={handleAgregarAlCarrito}>Agregar al carrito</button>
                 </div>
-                :
-                <p>Producto no encontrado con el id {id}</p>
+            ) : (
+                <p>Producto no encontrado.</p>
+            )}
+        </div>
     );
 };
 
 export default ItemDetail;
+
