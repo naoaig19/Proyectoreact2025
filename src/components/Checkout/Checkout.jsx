@@ -1,49 +1,64 @@
-import { useState } from 'react';
-import { useAppContext } from '../../context/context';
-import './Checkout.css';
-import { useNavigate } from 'react-router-dom';
+import { useState } from "react";
+import { useCartContext } from "../../context/CartContext";
+import { collection, addDoc } from "firebase/firestore";
+import { db } from "../../firebaseConfig";
 
-function Checkout() {
+const Checkout = () => {
+    const { carrito, totalUnidades, vaciarCarrito } = useCartContext();
+    const [nombre, setNombre] = useState("");
+    const [email, setEmail] = useState("");
+    const [telefono, setTelefono] = useState("");
+    const [idOrden, setIdOrden] = useState(null);
 
-    const navigate = useNavigate();
-
-    const [formData, setFormData] = useState({
-        nombre: "",
-        correo: "",
-        telefono: "",
-    });
-
-    const modificarInput = (e) => {
-        const { value, name } = e.target;
-        setFormData({
-            ...formData,
-            [name]: value,
-        });
-    };
-
-    const crearOrden = (e) => {
+    const manejarSubmit = async (e) => {
         e.preventDefault();
-        console.log("Orden creada", formData);
-        setFormData({
-            nombre: "",
-            correo: "",
-            telefono: "",
-        });
 
-        setTimeout(() => {
-            navigate("/");
-        }, 1000);
+        const orden = {
+            comprador: { nombre, email, telefono },
+            items: carrito,
+            total: carrito.reduce((acc, item) => acc + item.precio * item.cantidad, 0),
+            fecha: new Date(),
+        };
+
+        try {
+            const docRef = await addDoc(collection(db, "ordenes"), orden);
+            setIdOrden(docRef.id);
+            vaciarCarrito();
+        } catch (error) {
+            console.error("Error al generar la orden", error);
+        }
     };
+
+    if (idOrden) {
+        return <h2>¡Gracias por tu compra! Tu ID es: {idOrden}</h2>;
+    }
 
     return (
-        <div style={{ display: "flex", flexDirection: "column" }}>
-            <form onSubmit={crearOrden}>
-                <input type="text" placeholder='Nombre' name="nombre" value={formData.nombre} onChange={modificarInput} />
-                <input type="text" placeholder='Correo' name="correo" value={formData.correo} onChange={modificarInput} />
-                <input type="text" placeholder='Teléfono' name="telefono" value={formData.telefono} onChange={modificarInput} />
-                <input type="submit" value="Enviar" />
-            </form>
-        </div >
+        <form onSubmit={manejarSubmit}>
+            <h2>Finalizar compra</h2>
+            <input
+                type="text"
+                placeholder="Nombre"
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                required
+            />
+            <input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+            />
+            <input
+                type="tel"
+                placeholder="Teléfono"
+                value={telefono}
+                onChange={(e) => setTelefono(e.target.value)}
+                required
+            />
+            <button type="submit">Generar orden</button>
+        </form>
     );
 };
 
